@@ -81,6 +81,12 @@ python your_script_name.py
 
 The server will run on http://0.0.0.0:PORT, where PORT is specified in your .env file.
 
+**Set up ngrok so Twilio can access your local server**
+![image](https://github.com/user-attachments/assets/510ecf96-ae94-4519-ab7d-6527f84df8b2)
+
+Instructions on how to setup ngrok - [Ngrok Setup] (https://ngrok.com/docs/getting-started/)
+
+
 **Add your Url and /incoming-call endpoint to an Active number of your choosing in Twilio**
 ![image](https://github.com/user-attachments/assets/9e5b1235-bc3c-41f6-af4b-590bf36ff0eb)
 
