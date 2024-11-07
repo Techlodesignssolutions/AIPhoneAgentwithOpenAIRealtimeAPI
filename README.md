@@ -81,6 +81,10 @@ python your_script_name.py
 
 The server will run on http://0.0.0.0:PORT, where PORT is specified in your .env file.
 
+**Add your Url and /incomingcall endpoint to an Active number of your choosing in Twilio**
+![image](https://github.com/user-attachments/assets/bb05cb2a-34e5-4615-8dc5-53cf799ef133)
+
+
 **Example Replit Template**
 
 You can easily fork and run this project on Replit using this link:
