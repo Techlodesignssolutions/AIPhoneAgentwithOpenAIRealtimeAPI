@@ -22,7 +22,7 @@ Twilio Markup Language (TwiML): [TwiML Documentation]([https://www.twilio.com/do
 
 OpenAI Realtime API: [OpenAI Realtime API Overview](https://platform.openai.com/docs/guides/realtime/overview)
 
-OpenAI Realtime Client Events: [Realtime Client Events Documentation]( https://platform.openai.com/docs/api-reference/realtime-client-events)
+OpenAI RealtimeEvents: [Realtime Events Documentation](https://platform.openai.com/docs/api-reference/realtime)
 
 **How to Use Environment Variables**
 
