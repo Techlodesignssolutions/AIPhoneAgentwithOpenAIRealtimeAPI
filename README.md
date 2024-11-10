@@ -18,7 +18,7 @@ Understanding the functionality of the code and the services it interacts with i
 
 Twilio Media Stream Events: [WebSocket Messages to Twilio](https://www.twilio.com/docs/voice/media-streams/websocket-messages)
 
-Twilio Markup Language (TwiML): [TwiML Documentation]([https://www.twilio.com/docs/voice/media-streams/websocket-messages](https://www.twilio.com/docs/voice/twiml)
+Twilio Markup Language (TwiML): [TwiML Documentation](https://www.twilio.com/docs/voice/twiml)
 
 OpenAI Realtime API: [OpenAI Realtime API Overview](https://platform.openai.com/docs/guides/realtime/overview)
 
@@ -84,7 +84,7 @@ The server will run on http://0.0.0.0:PORT, where PORT is specified in your .env
 **Set up ngrok so Twilio can access your local server**
 ![image](https://github.com/user-attachments/assets/510ecf96-ae94-4519-ab7d-6527f84df8b2)
 
-Instructions on how to setup ngrok - [Ngrok Setup] (https://ngrok.com/docs/getting-started/)
+Instructions on how to setup ngrok - [Ngrok Setup](https://ngrok.com/docs/getting-started/)
 
 
 **Add your Url and /incoming-call endpoint to an Active number of your choosing in Twilio**
