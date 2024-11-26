@@ -97,11 +97,26 @@ async def handle_media_stream(websocket: WebSocket):
                     elif data['event'] == 'mark':
                         if mark_queue:
                             mark_queue.pop(0)
+                    elif data['event'] == 'stop':
+                        logger.info("Twilio call ended. Closing connections.")
+                        if openai_ws.open:
+                            logger.info("Closing OpenAI WebSocket.")
+                            await openai_ws.close()
+                            await log_websocket_status(openai_ws)
+                        return
             except WebSocketDisconnect:
                 print("Client disconnected.")
                 if openai_ws.open:
                     await openai_ws.close()
+           
+       async def log_websocket_status(ws):
+            """Utility function to log the state of the WebSocket connection."""
+            if ws.open:
+                logger.info("OpenAI WebSocket is still open.")
+            else:
+                 logger.info("OpenAI WebSocket is now closed.")
 
+        
         async def send_to_twilio():
             """Receive events from the OpenAI Realtime API, send audio back to Twilio."""
             nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
