@@ -109,14 +109,13 @@ async def handle_media_stream(websocket: WebSocket):
                 if openai_ws.open:
                     await openai_ws.close()
            
-       async def log_websocket_status(ws):
+        async def log_websocket_status(ws):
             """Utility function to log the state of the WebSocket connection."""
             if ws.open:
                 logger.info("OpenAI WebSocket is still open.")
             else:
-                 logger.info("OpenAI WebSocket is now closed.")
+                logger.info("OpenAI WebSocket is now closed.")
 
-        
         async def send_to_twilio():
             """Receive events from the OpenAI Realtime API, send audio back to Twilio."""
             nonlocal stream_sid, last_assistant_item, response_start_timestamp_twilio
