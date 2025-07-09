@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  ai-phone-agent:
+    build: .
+    container_name: ai-phone-agent
+    ports:
+      - "5050:5050"
+    environment:
+      - PORT=5050
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai-phone-network
+
+  # Optional: Add Redis for session management (uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ai-phone-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - ai-phone-network
+
+networks:
+  ai-phone-network:
+    driver: bridge
+
+# volumes:
+#   redis_data: 

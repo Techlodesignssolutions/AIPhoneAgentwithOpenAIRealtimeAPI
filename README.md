@@ -67,19 +67,51 @@ The handle_speech_started_event() function calculates the elapsed time and sends
 
 **Getting Started**
 
-Install Dependencies:
+## Prerequisites
 
+- Python 3.8 or higher
+- OpenAI API key with Realtime API access
+- Twilio account (optional, for phone functionality)
+
+## Installation
+
+1. **Clone the repository:**
+```sh
+git clone https://github.com/Techlodesignssolutions/AIPhoneAgentwithOpenAIRealtimeAPI.git
+cd AIPhoneAgentwithOpenAIRealtimeAPI
+```
+
+2. **Install Dependencies:**
 ```sh
 pip install -r requirements.txt
 ```
 
-Run the Application:
-
+3. **Set up Environment Variables:**
+   - Create a `.env` file in the root directory
+   - Add your OpenAI API key:
 ```sh
-python your_script_name.py
+OPENAI_API_KEY=your_openai_api_key_here
+PORT=5050
 ```
 
-The server will run on http://0.0.0.0:PORT, where PORT is specified in your .env file.
+## Running the Application
+
+### Option 1: Direct Python
+```sh
+python main.py
+```
+
+### Option 2: Using Docker
+```sh
+# Build and run with Docker Compose
+docker-compose up -d
+
+# Or build and run manually
+docker build -t ai-phone-agent .
+docker run -p 5050:5050 --env-file .env ai-phone-agent
+```
+
+The server will run on `http://localhost:5050` (or the port specified in your .env file).
 
 **Set up ngrok so Twilio can access your local server**
 ![image](https://github.com/user-attachments/assets/510ecf96-ae94-4519-ab7d-6527f84df8b2)

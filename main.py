@@ -9,6 +9,9 @@ from fastapi.websockets import WebSocketDisconnect
 from twilio.twiml.voice_response import VoiceResponse, Connect, Say, Stream
 from dotenv import load_dotenv
 import logging
+import aiohttp
+import re
+from typing import Optional
 
 
 # Configure logging
@@ -52,6 +55,192 @@ async def handle_incoming_call(request: Request):
     logger.info("Successfully created the TwiML response")
     return HTMLResponse(content=str(response), media_type="application/xml")
 
+
+@app.api_route("/make-call", methods=["POST"])
+async def make_outbound_call(request: Request):
+    """Make an outbound call using Twilio."""
+    try:
+        data = await request.json()
+        to_number = data.get('to_number')
+        
+        if not to_number:
+            return {"error": "to_number is required"}
+        
+        # Create TwiML response for outbound call
+        response = VoiceResponse()
+        connect = Connect()
+        connect.stream(url=f'wss://{request.url.hostname}/media-stream')
+        response.append(connect)
+        
+        # Use Twilio API to make the call
+        from twilio.rest import Client
+        
+        # You'd need to add these to your .env file
+        # TWILIO_ACCOUNT_SID=your_account_sid
+        # TWILIO_AUTH_TOKEN=your_auth_token
+        # TWILIO_PHONE_NUMBER=your_twilio_phone_number
+        
+        # client = Client(
+        #     os.getenv('TWILIO_ACCOUNT_SID'),
+        #     os.getenv('TWILIO_AUTH_TOKEN')
+        # )
+        
+        # call = client.calls.create(
+        #     to=to_number,
+        #     from_=os.getenv('TWILIO_PHONE_NUMBER'),
+        #     twiml=str(response)
+        # )
+        
+        return {"message": f"Call initiated to {to_number}", "twiml": str(response)}
+        
+    except Exception as e:
+        logger.error(f"Error making outbound call: {e}")
+        return {"error": str(e)}
+
+
+@app.post("/trigger-call")
+async def trigger_call(request: Request):
+    """
+    Webhook endpoint: POST here to trigger a call to your phone.
+    """
+    from twilio.rest import Client
+    import os
+
+    # Get your phone number and Twilio config from environment variables
+    to_number = os.getenv('MY_PHONE_NUMBER')
+    from_number = os.getenv('TWILIO_PHONE_NUMBER')
+    account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+    auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+
+    # The URL Twilio will request for call instructions (TwiML)
+    twiml_url = os.getenv('TWIML_URL')
+
+    client = Client(account_sid, auth_token)
+    call = client.calls.create(
+        to=to_number,
+        from_=from_number,
+        url=twiml_url
+    )
+    return {"message": f"Call triggered to {to_number}", "call_sid": call.sid}
+
+
+# N8N Webhook Configuration
+N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL', 'https://your-n8n-instance.com/webhook/directions')
+WEBHOOK_TIMEOUT = 30
+
+def extract_location_intent(user_message: str) -> Optional[str]:
+    """Extract location/destination from user message using robust regex logic."""
+    user_message = user_message.strip().lower()
+
+    # Look for trigger phrases followed by anything that resembles a destination
+    patterns = [
+        r"(?:directions|navigate|route|take me|go|way)\s+(?:to\s+)?(.+?)(?:[\.\?!]|$)",
+        r"how do I get to\s+(.+?)(?:[\.\?!]|$)",
+        r"get me to\s+(.+?)(?:[\.\?!]|$)",
+        r"head toward\s+(.+?)(?:[\.\?!]|$)",
+        r"find\s+(.+?)(?:[\.\?!]|$)",
+        r"locate\s+(.+?)(?:[\.\?!]|$)"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, user_message, re.IGNORECASE)
+        if match:
+            # Strip potential trailing filler words or punctuation
+            destination = re.sub(r"[\.\?!,;:\s]+$", "", match.group(1))
+            return destination.strip()
+
+    return None
+
+async def send_to_n8n_webhook(destination: str) -> dict:
+    """Send location request to n8n webhook and return response"""
+    try:
+        payload = {
+            "intent": "directions",
+            "destination": destination,
+            "timestamp": str(asyncio.get_event_loop().time())
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                N8N_WEBHOOK_URL,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=WEBHOOK_TIMEOUT)
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return {
+                        "success": True,
+                        "data": result,
+                        "message": result.get("message", "Request processed successfully")
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "I encountered an issue processing your request"
+                    }
+    except asyncio.TimeoutError:
+        return {
+            "success": False,
+            "message": "The request is taking longer than expected, please try again"
+        }
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return {
+            "success": False,
+            "message": "I'm having trouble processing that request right now"
+        }
+
+async def process_location_intent(user_message: str, openai_ws):
+    """Process location intent and handle webhook communication"""
+    destination = extract_location_intent(user_message)
+    
+    if destination:
+        # Send immediate acknowledgment
+        acknowledgment = {
+            "type": "conversation.item.create",
+            "item": {
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"I'll get directions to {destination} for you. Let me process that request..."
+                    }
+                ]
+            }
+        }
+        await openai_ws.send(json.dumps(acknowledgment))
+        await openai_ws.send(json.dumps({"type": "response.create"}))
+        
+        # Send to n8n webhook
+        webhook_result = await send_to_n8n_webhook(destination)
+        
+        # Let the AI naturally respond based on the webhook result
+        if webhook_result["success"]:
+            context_message = f"The directions request to {destination} was processed successfully. The system returned: {webhook_result.get('data', {})}. Please acknowledge this success to the user in a natural, conversational way."
+        else:
+            context_message = f"There was an issue processing the directions request to {destination}. The error was: {webhook_result.get('message', 'Unknown error')}. Please inform the user about this issue in a natural, helpful way."
+        
+        # Send context to AI for natural response
+        context_item = {
+            "type": "conversation.item.create",
+            "item": {
+                "type": "message",
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": context_message
+                    }
+                ]
+            }
+        }
+        await openai_ws.send(json.dumps(context_item))
+        await openai_ws.send(json.dumps({"type": "response.create"}))
+        
+        return True
+    
+    return False
 
 @app.websocket("/media-stream")
 async def handle_media_stream(websocket: WebSocket):
@@ -124,6 +313,14 @@ async def handle_media_stream(websocket: WebSocket):
                     response = json.loads(openai_message)
                     if response['type'] in LOG_EVENT_TYPES:
                         print(f"Received event: {response['type']}", response)
+
+                    # Process user input for location intents
+                    if response.get('type') == 'conversation.item.input_audio_transcription.completed':
+                        transcript = response.get('transcript', '')
+                        if transcript:
+                            intent_handled = await process_location_intent(transcript, openai_ws)
+                            if intent_handled:
+                                continue  # Skip normal processing if intent was handled
 
                     if response.get('type') == 'response.audio.delta' and 'delta' in response:
                         audio_payload = base64.b64encode(base64.b64decode(response['delta'])).decode('utf-8')
@@ -229,6 +426,7 @@ async def send_session_update(openai_ws):
           "instructions": SYSTEM_MESSAGE,
           "modalities": ["text", "audio"],
           "temperature": 0.8,
+          "input_audio_transcription": {"model": "whisper-1"}
       }
     }
     print('Sending session update:', json.dumps(session_update))
